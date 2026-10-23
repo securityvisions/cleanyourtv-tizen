@@ -33,6 +33,43 @@
     "apple tv", "jellyfin", "plex"
   ];
 
+
+  // Apps shipped with this build of the module. Used when TizenBrew's
+  // webview is not allowed to enumerate applications (Tizen
+  // application.info privilege is not declared by TizenBrew), which is the
+  // normal case on retail Tizen TVs. Launching still works because
+  // application.launch IS declared by TizenBrew.
+  var FALLBACK_APPS = [
+    ["9Ur5IzDKqV.TizenYouTube", "YouTube"],
+    ["org.tizen.netflix-app", "Netflix"],
+    ["org.tizen.primevideo", "Prime Video"],
+    ["com.samsung.tv.aria-video", "Apple TV"],
+    ["org.tizen.browser", "Internet"],
+    ["com.samsung.tv.SmartThingsApp", "SmartThings"],
+    ["xvvl3S1TT1.TizenTubeStandalone", "TizenTube"],
+    ["AprZAARz4r.Jellyfin", "Jellyfin"],
+    ["MoonLightS.MoonlightWasm", "Moonlight"],
+    ["newslO9NqF.stremio", "Stremio"],
+    ["IPTVPlayer.IPTV", "EN-IPTV"],
+    ["madebypatk.vlcweb", "VLC"],
+    ["FlixTVApp1.Flixor", "Plex"],
+    ["NuvioTV001.NuvioTV", "NuvioTV"],
+    ["JZUbM5WimZ.Reiverr", "Reiverr"],
+    ["872yxfxKm1.AniLibriaTizenApp", "AniLiberty"],
+    ["CrKckTV001.KickTV", "KickTV"],
+    ["y3ckmhs1Ds.Tizengram", "TizenFeed"],
+    ["qL5oFoTHoJ.FCastReceiver", "FCast"],
+    ["rfhFEcdD35.CameraDevice", "RTSP Camera"],
+    ["axAXSQIgQ1.hackTV", "HackTV"],
+    ["NM5CXQae71.OpenTTD", "OpenTTD"],
+    ["ChIaKiTiZ0.ChiakiTizen", "Chiaki"],
+    ["nl.jknaapen.fladder", "Fladder"],
+    ["io.gh.reisxd.HyperTizen", "HyperTizen"],
+    ["org.apps2samsung.overscan", "Overscan"],
+    ["com.tailscale.tailscale", "Tailscale"],
+    ["xvvl3S1bvH.TizenBrewStandalone", "TizenBrew"]
+  ];
+
   function safeText(v) {
     return v == null ? "" : String(v);
   }
@@ -73,9 +110,9 @@
     var d = new Date();
     var hh = ("0" + d.getHours()).slice(-2);
     var mm = ("0" + d.getMinutes()).slice(-2);
-    var days = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
-    var months = ["tháng 1", "tháng 2", "tháng 3", "tháng 4", "tháng 5", "tháng 6",
-                  "tháng 7", "tháng 8", "tháng 9", "tháng 10", "tháng 11", "tháng 12"];
+    var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     document.getElementById("clock").textContent = hh + ":" + mm;
     document.getElementById("date").textContent =
       days[d.getDay()] + ", " + d.getDate() + " " + months[d.getMonth()];
@@ -174,7 +211,7 @@
     if (!favoriteApps.length) {
       var empty = document.createElement("div");
       empty.className = "emptyFavorites";
-      empty.textContent = "Chọn một ứng dụng bên dưới rồi bấm nút XANH LÁ để ghim";
+      empty.textContent = "Chọn một apps bên dưới rồi bấm nút XANH LÁ để ghim";
       favoritesEl.appendChild(empty);
     } else {
       for (i = 0; i < favoriteApps.length; i++) {
@@ -236,7 +273,7 @@
 
     if (!app) {
       focusedNameEl.textContent =
-        allApps.length ? "Chọn ứng dụng" : "Không có ứng dụng";
+        allApps.length ? "Chọn apps" : "Không có apps";
       focusedMetaEl.textContent = "";
       return;
     }
@@ -250,7 +287,7 @@
 
     focusedNameEl.textContent = app.name;
     focusedMetaEl.textContent =
-      (section === "favorites" ? "Yêu thích" : "Tất cả ứng dụng") +
+      (section === "favorites" ? "Favorites" : "All apps") +
       " • " + (hasFavorite(app.id) ? "Đã ghim" : "Chưa ghim");
   }
 
@@ -362,13 +399,13 @@
     }
 
     if (favoriteIds.length >= MAX_FAVORITES) {
-      toast("Favorites đã đủ " + MAX_FAVORITES + " ứng dụng");
+      toast("Favorites full (max " + MAX_FAVORITES + " apps");
       return;
     }
 
     favoriteIds.push(app.id);
     writeJson(FAVORITES_KEY, favoriteIds);
-    toast("Đã ghim " + app.name);
+    toast("Pinned " + app.name);
     renderAll(true);
   }
 
@@ -379,7 +416,7 @@
     if (!(window.tizen &&
           tizen.application &&
           tizen.application.launch)) {
-      toast("Tizen Application API không khả dụng");
+      toast("Tizen Application API unavailable");
       return;
     }
 
@@ -389,13 +426,13 @@
         function () {},
         function (err) {
           toast(
-            "Không mở được " + app.name +
+            "Could not open " + app.name +
             (err && err.message ? ": " + err.message : "")
           );
         }
       );
     } catch (e) {
-      toast("Không mở được " + app.name);
+      toast("Could not open " + app.name);
     }
   }
 
@@ -548,30 +585,31 @@
     return out;
   }
 
+  function useFallbackApps(notify) {
+    var apps = [];
+    var i;
+    for (i = 0; i < FALLBACK_APPS.length; i++) {
+      apps.push({ id: FALLBACK_APPS[i][0], name: FALLBACK_APPS[i][1], iconPath: "" });
+    }
+    allApps = normalizeApps(apps);
+    ensureFavorites();
+    page = 0;
+    renderAll(false);
+    if (notify) toast("Using built-in app list (" + allApps.length + " apps)");
+  }
+
   function loadApps(showMessage) {
     if (loading) return;
 
     loading = true;
-    focusedNameEl.textContent = "Đang đọc ứng dụng…";
+    focusedNameEl.textContent = "Loading apps...";
     focusedMetaEl.textContent = "";
 
     if (!(window.tizen &&
           tizen.application &&
           tizen.application.getAppsInfo)) {
       loading = false;
-
-      allApps = [
-        { id: "demo.youtube", name: "YouTube", iconPath: "" },
-        { id: "demo.netflix", name: "Netflix", iconPath: "" },
-        { id: "demo.internet", name: "Internet", iconPath: "" },
-        { id: "demo.spotify", name: "Spotify", iconPath: "" },
-        { id: "demo.apple", name: "Apple TV", iconPath: "" }
-      ];
-
-      ensureFavorites();
-      page = 0;
-      renderAll(false);
-      toast("Đang ở chế độ demo: không thấy Tizen API");
+      useFallbackApps(true);
       return;
     }
 
@@ -580,6 +618,12 @@
         function (apps) {
           loading = false;
           allApps = normalizeApps(apps || []);
+
+          if (!allApps.length) {
+            useFallbackApps(true);
+            return;
+          }
+
           ensureFavorites();
 
           if (page >= pageCount()) {
@@ -589,26 +633,17 @@
           renderAll(false);
 
           if (showMessage) {
-            toast("Đã làm mới " + allApps.length + " ứng dụng");
-          }
-
-          if (!allApps.length) {
-            toast("Không tìm thấy ứng dụng hiển thị được");
+            toast("Refreshed " + allApps.length + " apps");
           }
         },
         function (err) {
           loading = false;
-          toast(
-            "Không đọc được danh sách app" +
-            (err && err.message ? ": " + err.message : "")
-          );
-          renderAll(false);
+          useFallbackApps(true);
         }
       );
     } catch (e) {
       loading = false;
-      toast("Lỗi Tizen API: " + e.message);
-      renderAll(false);
+      useFallbackApps(true);
     }
   }
 
