@@ -211,7 +211,7 @@
     if (!favoriteApps.length) {
       var empty = document.createElement("div");
       empty.className = "emptyFavorites";
-      empty.textContent = "Chọn một apps bên dưới rồi bấm nút XANH LÁ để ghim";
+      empty.textContent = "Select an app below, then press GREEN to pin";
       favoritesEl.appendChild(empty);
     } else {
       for (i = 0; i < favoriteApps.length; i++) {
@@ -239,7 +239,7 @@
     }
 
     pageInfoEl.textContent =
-      allApps.length + " app • Trang " + (page + 1) + "/" + count;
+      allApps.length + " apps • Page " + (page + 1) + "/" + count;
   }
 
   function normalizeFocus() {
@@ -273,7 +273,7 @@
 
     if (!app) {
       focusedNameEl.textContent =
-        allApps.length ? "Chọn apps" : "Không có apps";
+        allApps.length ? "Select an app" : "No apps";
       focusedMetaEl.textContent = "";
       return;
     }
@@ -288,7 +288,7 @@
     focusedNameEl.textContent = app.name;
     focusedMetaEl.textContent =
       (section === "favorites" ? "Favorites" : "All apps") +
-      " • " + (hasFavorite(app.id) ? "Đã ghim" : "Chưa ghim");
+      " • " + (hasFavorite(app.id) ? "Pinned" : "Not pinned");
   }
 
   function renderAll(keepFocus) {
@@ -379,7 +379,7 @@
 
       favoriteIds = next;
       writeJson(FAVORITES_KEY, favoriteIds);
-      toast("Đã bỏ ghim " + app.name);
+      toast("Unpinned " + app.name);
 
       if (section === "favorites") {
         renderFavorites();
